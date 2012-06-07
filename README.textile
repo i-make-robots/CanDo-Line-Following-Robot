@@ -1,0 +1,5 @@
+h1. CanDo - A line following robot for students
+
+CanDo is a gentle introduction to robotics and Arduino. It is intended to teach students about programming and electronics in a fun, goal-oriented way.  CanDo also has room to grow - a clever mind could make it into a maze solving robot.
+
+Please visit "the wiki":https://github.com/i-make-robots/CanDo/wiki for more information.
