@@ -31,6 +31,10 @@ Servo left_wheel;
 Servo right_wheel;
 
 
+int left_max,left_min;
+int right_max,right_min;
+int c;
+
 
 //------------------------------------------------------------------------------
 // METHODS
@@ -42,8 +46,18 @@ Servo right_wheel;
 
 // Run once when the program starts
 void setup() {
-  left_wheel.attach( 8 );
-  right_wheel.attach( 9 );
+  // Get ready to send messages from the Arduino to the human, if need be.
+  Serial.begin(9600);
+
+  // Each wheel is connected to a digital pin on the Arduino.
+  // Here we tell the included code which one so they can talk to each other.
+  left_wheel.attach( 2 );
+  right_wheel.attach( 4 );
+  left_min=512;
+  left_max=512;
+  right_min=512;
+  right_max=512;
+  c=0;
 }
 
 
@@ -54,11 +68,52 @@ void loop() {
   int left_sensor  = analogRead( A0 );
   int right_sensor = analogRead( A1 );
 
+  if(left_sensor > left_max) {
+    left_max++;
+    left_sensor=left_max;
+  }
+  if(left_sensor < left_min) {
+    left_min--;
+    left_sensor=left_min;
+  }
+  float left = (float)( left_sensor - left_min ) / (float)( left_max - left_min );
+  
+  if(right_sensor > right_max) {
+    right_max++;
+    right_sensor=right_max;
+  }
+  if(right_sensor < right_min) {
+    right_min--;
+    right_sensor=right_min;
+  }
+  float right = (float)( right_sensor - right_min ) / (float)( right_max - right_min );
+
+  if(++c > 10 ) {
+    if(right_max>512) right_max--;
+    if(right_min<512) right_min++;
+    if(left_max>512) left_max--;
+    if(left_min<512) left_min++;
+    c=0;
+  }
+
   // Do the eyes see the same thing?
-  int difference = left_sensor - right_sensor;
+  int difference = ( left - right ) * 127;
   // If the difference is 0 then they see the same thing.
   // I want range 0 to 128.  More on that in a moment.
-  difference /= 16;
+  
+  Serial.print(left);
+  Serial.print('\t');
+  Serial.print(left_max);
+  Serial.print('\t');
+  Serial.print(left_min);
+  Serial.print('\t');
+  Serial.print(right);
+  Serial.print('\t');
+  Serial.print(right_max);
+  Serial.print('\t');
+  Serial.print(right_min);
+  Serial.print('\t');
+  Serial.println(difference,DEC);
   
   // Adjust the wheel speed.  Servo::write() accepts a number from 0 to 255.
   // 127, in the middle, means don't move.  255 is full speed forward.
@@ -67,7 +122,7 @@ void loop() {
   right_wheel.write( 127 - difference );
 
   // give the brain a short rest to let the servos do their thing.
-  delay(50);  // milliseconds
+  delay(20);  // milliseconds
 }
 
 
