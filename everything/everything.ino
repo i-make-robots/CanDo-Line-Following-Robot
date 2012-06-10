@@ -1,9 +1,10 @@
 //------------------------------------------------------------------------------
-// Draw robot
-// dan@marginallycelver.com 2012 feb 11
+// CanDo line-following robot
+// dan@marginallycelver.com 2012-06-08
 //------------------------------------------------------------------------------
 // Copyright at end of file.
 // please see http://www.github.com/i-make-robots/CanDo for more information.
+
 
 
 //------------------------------------------------------------------------------
@@ -21,6 +22,23 @@
 
 
 //------------------------------------------------------------------------------
+// DEFINES
+// Defines are values that will not change while the program is running.
+//------------------------------------------------------------------------------
+
+
+
+// Servos have a speed from 0 (full speed backward) to 180 (full speed forward)
+// NO_MOVE is the value where they don't move at all in the middle.
+#define NO_MOVE  92
+// If our servos don't move then the robot won't go.  What should our forward
+// speed be?
+#define SPEED    8
+#define ACCEL    5
+
+
+
+//------------------------------------------------------------------------------
 // GLOBALS
 // Globals store information that needs to be used everywhere in the program.
 //------------------------------------------------------------------------------
@@ -31,9 +49,13 @@ Servo left_wheel;
 Servo right_wheel;
 
 
-int left_max,left_min;
-int right_max,right_min;
+// Here I'm storing information about the sensors.  I made this a complicated
+// because I want it to work right the first time for everybody.
+int left_max,left_min,left_first;
+int right_max,right_min,right_first;
+int first;
 int c;
+
 
 
 //------------------------------------------------------------------------------
@@ -53,10 +75,9 @@ void setup() {
   // Here we tell the included code which one so they can talk to each other.
   left_wheel.attach( 2 );
   right_wheel.attach( 4 );
-  left_min=512;
-  left_max=512;
-  right_min=512;
-  right_max=512;
+
+  //
+  first=1;
   c=0;
 }
 
@@ -68,6 +89,10 @@ void loop() {
   int left_sensor  = analogRead( A0 );
   int right_sensor = analogRead( A1 );
 
+  // smooth the left sensor to always be between 1 and 0.
+  if(first==1) {
+    left_first=left_max=left_min=left_sensor;
+  }
   if(left_sensor > left_max) {
     left_max++;
     left_sensor=left_max;
@@ -76,8 +101,11 @@ void loop() {
     left_min--;
     left_sensor=left_min;
   }
-  float left = (float)( left_sensor - left_min ) / (float)( left_max - left_min );
   
+  // smooth the right sensor to always be between 1 and 0.
+  if(first==1) {
+    right_first=right_max=right_min=right_sensor;
+  }
   if(right_sensor > right_max) {
     right_max++;
     right_sensor=right_max;
@@ -86,41 +114,44 @@ void loop() {
     right_min--;
     right_sensor=right_min;
   }
+  
+  
+  float left  = (float)( left_sensor  - left_min  ) / (float)( left_max  - left_min  );
   float right = (float)( right_sensor - right_min ) / (float)( right_max - right_min );
 
-  if(++c > 10 ) {
-    if(right_max>512) right_max--;
-    if(right_min<512) right_min++;
-    if(left_max>512) left_max--;
-    if(left_min<512) left_min++;
-    c=0;
-  }
-
   // Do the eyes see the same thing?
-  int difference = ( left - right ) * 127;
   // If the difference is 0 then they see the same thing.
-  // I want range 0 to 128.  More on that in a moment.
-  
-  Serial.print(left);
-  Serial.print('\t');
-  Serial.print(left_max);
-  Serial.print('\t');
-  Serial.print(left_min);
-  Serial.print('\t');
-  Serial.print(right);
-  Serial.print('\t');
-  Serial.print(right_max);
-  Serial.print('\t');
-  Serial.print(right_min);
-  Serial.print('\t');
-  Serial.println(difference,DEC);
-  
-  // Adjust the wheel speed.  Servo::write() accepts a number from 0 to 255.
-  // 127, in the middle, means don't move.  255 is full speed forward.
-  left_wheel .write( 127 + difference );
-  // The right wheel is backward from the left wheel, so reverse the direction.
-  right_wheel.write( 127 - difference );
+  // The difference will always be between +1.0 and -1.0
+  float difference = left - right;
 
+  // change is always between +ACCEL and -ACCEL
+  int change = ACCEL * difference;
+
+  if(++c > 10 ) {
+    c=0;
+    if(right_max>right_first) right_max--;
+    if(right_min<right_first) right_min++;
+    if(left_max>left_first) left_max--;
+    if(left_min<left_first) left_min++;
+  }
+  
+  first=0;
+
+  Serial.print(left);            Serial.print(' ');
+  Serial.print(left_max);        Serial.print(' ');
+  Serial.print(left_min);        Serial.print('\t');
+  Serial.print(right);           Serial.print(' ');
+  Serial.print(right_max);       Serial.print(' ');
+  Serial.print(right_min);       Serial.print('\t');
+  Serial.print(difference);      Serial.print('\t');
+  Serial.print(change,DEC);      Serial.print('\n');
+  
+  change=5;
+  // Adjust the wheel speed.  Servo::write() accepts a number from 0 to 180.
+  // NO_MOVE is in the middle.  180 is full speed forward.
+  left_wheel .write( NO_MOVE - SPEED - change );
+  right_wheel.write( NO_MOVE + SPEED - change );
+  
   // give the brain a short rest to let the servos do their thing.
   delay(20);  // milliseconds
 }
