@@ -14,11 +14,9 @@
 //------------------------------------------------------------------------------
 
 
-
 // Servos are complicated and I don't want to reinvent the wheel, so I
 // include someone else's code that does all the heavy lifting for me.
 #include <Servo.h>
-
 
 
 //------------------------------------------------------------------------------
@@ -27,133 +25,96 @@
 //------------------------------------------------------------------------------
 
 
+// servos go from 0 (full backwards) to 180 (full forwards) but servos
+// aren't always 90=no movement.  So here is where you can adjust the
+// settings.
+#define NO_MOVE_R 92
+#define NO_MOVE_L 91
 
-// Servos have a speed from 0 (full speed backward) to 180 (full speed forward)
-// NO_MOVE is the value where they don't move at all in the middle.
-#define NO_MOVE  92
-// If our servos don't move then the robot won't go.  What should our forward
-// speed be?
-#define SPEED    8
-#define ACCEL    5
+// How fast are we moving forward?
+// Set this to zero to test NO_MOVE_* are correct.
+#define SPEED 8
 
+// shouldn't have to change this...
+#define MOVE_R (NO_MOVE_R+SPEED)
+#define MOVE_L (NO_MOVE_L-SPEED)
 
 
 //------------------------------------------------------------------------------
 // GLOBALS
-// Globals store information that needs to be used everywhere in the program.
+// Globals are places to store information that can be accessed from anywhere
+// in your program.
 //------------------------------------------------------------------------------
 
 
+Servo l_wheel;
+Servo r_wheel;
 
-Servo left_wheel;
-Servo right_wheel;
+// the darkest color the eyes have ever seen
+int lmin=1024;
+int rmin=1024;
 
-
-// Here I'm storing information about the sensors.  I made this a complicated
-// because I want it to work right the first time for everybody.
-int left_max,left_min,left_first;
-int right_max,right_min,right_first;
-int first;
-int c;
-
+// the brightest color the eyes have ever seen
+int lmax=0;
+int rmax=0;
 
 
 //------------------------------------------------------------------------------
 // METHODS
-// Methods describe what the robot does - that is to say, how it reads,
-// writes, and calculates information to achieve a result.
+// Methods describe how to do a given job.  Some methods can call others.
 //------------------------------------------------------------------------------
 
 
-
-// Run once when the program starts
+// setup is called once when the board resets.
 void setup() {
-  // Get ready to send messages from the Arduino to the human, if need be.
+  // Phone the computer to report results.  9600 is how fast to talk.
   Serial.begin(9600);
-
-  // Each wheel is connected to a digital pin on the Arduino.
-  // Here we tell the included code which one so they can talk to each other.
-  left_wheel.attach( 2 );
-  right_wheel.attach( 4 );
-
-  //
-  first=1;
-  c=0;
+  // Tell the arduino where the wheels are connected.  
+  l_wheel.attach(2);
+  r_wheel.attach(4);
 }
 
 
-
-// Run over and over again
+// loop is called over and over again after setup is done.
 void loop() {
-  // What do the robot eyes see?  analogRead gives a value from 0 to 1023
-  int left_sensor  = analogRead( A0 );
-  int right_sensor = analogRead( A1 );
+  // Read in what the eyes are seeing.
+  int raw_l_sensor = analogRead(A0);
+  int raw_r_sensor = analogRead(A1);
 
-  // smooth the left sensor to always be between 1 and 0.
-  if(first==1) {
-    left_first=left_max=left_min=left_sensor;
-  }
-  if(left_sensor > left_max) {
-    left_max++;
-    left_sensor=left_max;
-  }
-  if(left_sensor < left_min) {
-    left_min--;
-    left_sensor=left_min;
-  }
-  
-  // smooth the right sensor to always be between 1 and 0.
-  if(first==1) {
-    right_first=right_max=right_min=right_sensor;
-  }
-  if(right_sensor > right_max) {
-    right_max++;
-    right_sensor=right_max;
-  }
-  if(right_sensor < right_min) {
-    right_min--;
-    right_sensor=right_min;
-  }
-  
-  
-  float left  = (float)( left_sensor  - left_min  ) / (float)( left_max  - left_min  );
-  float right = (float)( right_sensor - right_min ) / (float)( right_max - right_min );
+  // adjust for the light in the room
+  if(lmax<raw_l_sensor) lmax=raw_l_sensor;
+  if(rmax<raw_r_sensor) rmax=raw_r_sensor;
+  if(lmin>raw_l_sensor) lmin=raw_l_sensor;
+  if(rmin>raw_r_sensor) rmin=raw_r_sensor;
 
-  // Do the eyes see the same thing?
-  // If the difference is 0 then they see the same thing.
-  // The difference will always be between +1.0 and -1.0
-  float difference = left - right;
-
-  // change is always between +ACCEL and -ACCEL
-  int change = ACCEL * difference;
-
-  if(++c > 10 ) {
-    c=0;
-    if(right_max>right_first) right_max--;
-    if(right_min<right_first) right_min++;
-    if(left_max>left_first) left_max--;
-    if(left_min<left_first) left_min++;
-  }
+  // adjust the speed of each wheel based on the amount of light in each eye.
+  // darker eyes means slower wheels.
+  int lval=SPEED*(float)(raw_l_sensor-lmin)/(float)(lmax-lmin);
+  int rval=SPEED*(float)(raw_r_sensor-rmin)/(float)(rmax-rmin);
   
-  first=0;
+  // send the new speed to each wheel.
+  l_wheel.write(NO_MOVE_L-lval);
+  r_wheel.write(NO_MOVE_R+rval);
 
-  Serial.print(left);            Serial.print(' ');
-  Serial.print(left_max);        Serial.print(' ');
-  Serial.print(left_min);        Serial.print('\t');
-  Serial.print(right);           Serial.print(' ');
-  Serial.print(right_max);       Serial.print(' ');
-  Serial.print(right_min);       Serial.print('\t');
-  Serial.print(difference);      Serial.print('\t');
-  Serial.print(change,DEC);      Serial.print('\n');
+  // if we are connected to the computer, spit out important information to explain what is going on.  
+  Serial.print(raw_l_sensor);
+  Serial.print('\t');
+  Serial.print(lmax);
+  Serial.print('\t');
+  Serial.print(lmin);
+  Serial.print('\t');
+  Serial.print(lval);
+  Serial.print("\t\t");
+  Serial.print(raw_r_sensor);
+  Serial.print('\t');
+  Serial.print(rmax);
+  Serial.print('\t');
+  Serial.print(rmin);
+  Serial.print('\t');
+  Serial.print(rval);
+  Serial.print('\n');
   
-  change=5;
-  // Adjust the wheel speed.  Servo::write() accepts a number from 0 to 180.
-  // NO_MOVE is in the middle.  180 is full speed forward.
-  left_wheel .write( NO_MOVE - SPEED - change );
-  right_wheel.write( NO_MOVE + SPEED - change );
-  
-  // give the brain a short rest to let the servos do their thing.
-  delay(20);  // milliseconds
+  delay(25);
 }
 
 
