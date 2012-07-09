@@ -1,44 +1,11 @@
 //------------------------------------------------------------------------------
 // CanDo line-following robot
 // dan@marginallycelver.com 2012-06-08
-// everything put together into one file
+// reading a value from a photo resistor
 //------------------------------------------------------------------------------
 // Copyright at end of file.
 // please see http://www.github.com/i-make-robots/CanDo for more information.
 
-
-
-//------------------------------------------------------------------------------
-// INCLUDES
-// Includes save a lot of time by allowing you to use previously written code
-// without copying and pasting it into this file (which would make a giant mess)
-//------------------------------------------------------------------------------
-
-
-// Servos are complicated and I don't want to reinvent the wheel, so I
-// include someone else's code that does all the heavy lifting for me.
-#include <Servo.h>
-
-
-//------------------------------------------------------------------------------
-// DEFINES
-// Defines are values that will not change while the program is running.
-//------------------------------------------------------------------------------
-
-
-// servos go from 0 (full backwards) to 180 (full forwards) but servos
-// aren't always 90=no movement.  So here is where you can adjust the
-// settings.
-#define NO_MOVE_R 92
-#define NO_MOVE_L 91
-
-// How fast are we moving forward?
-// Set this to zero to test NO_MOVE_* are correct.
-#define SPEED 8
-
-// shouldn't have to change this...
-#define MOVE_R (NO_MOVE_R+SPEED)
-#define MOVE_L (NO_MOVE_L-SPEED)
 
 
 //------------------------------------------------------------------------------
@@ -48,16 +15,8 @@
 //------------------------------------------------------------------------------
 
 
-Servo l_wheel;
-Servo r_wheel;
-
 // the darkest color the eyes have ever seen
-int lmin=1024;
-int rmin=1024;
-
-// the brightest color the eyes have ever seen
-int lmax=0;
-int rmax=0;
+int xmin, xmax;
 
 
 //------------------------------------------------------------------------------
@@ -70,51 +29,29 @@ int rmax=0;
 void setup() {
   // Phone the computer to report results.  9600 is how fast to talk.
   Serial.begin(9600);
-  // Tell the arduino where the wheels are connected.  
-  l_wheel.attach(2);
-  r_wheel.attach(4);
+  xmin=1024;
+  xmax=0;
 }
 
 
 // loop is called over and over again after setup is done.
 void loop() {
   // Read in what the eyes are seeing.
-  int raw_l_sensor = analogRead(A0);
-  int raw_r_sensor = analogRead(A1);
+  int x = analogRead(A0);
 
-  // adjust for the light in the room
-  if(lmax<raw_l_sensor) lmax=raw_l_sensor;
-  if(rmax<raw_r_sensor) rmax=raw_r_sensor;
-  if(lmin>raw_l_sensor) lmin=raw_l_sensor;
-  if(rmin>raw_r_sensor) rmin=raw_r_sensor;
-
-  // adjust the speed of each wheel based on the amount of light in each eye.
-  // darker eyes means slower wheels.
-  int lval=SPEED*(float)(raw_l_sensor-lmin)/(float)(lmax-lmin);
-  int rval=SPEED*(float)(raw_r_sensor-rmin)/(float)(rmax-rmin);
-  
-  // send the new speed to each wheel.
-  l_wheel.write(NO_MOVE_L-lval);
-  r_wheel.write(NO_MOVE_R+rval);
+  // this is a simple example of using if() to make decisions.
+  // for more options, read about "if/else" and "switch".
+  if(xmax > x) xmax = x;
+  if(xmin < x) xmin = x;
 
   // if we are connected to the computer, spit out important information to explain what is going on.  
-  Serial.print(raw_l_sensor);
-  Serial.print('\t');
-  Serial.print(lmax);
-  Serial.print('\t');
-  Serial.print(lmin);
-  Serial.print('\t');
-  Serial.print(lval);
-  Serial.print("\t\t");
-  Serial.print(raw_r_sensor);
-  Serial.print('\t');
-  Serial.print(rmax);
-  Serial.print('\t');
-  Serial.print(rmin);
-  Serial.print('\t');
-  Serial.print(rval);
-  Serial.print('\n');
+  Serial.println(x);
+  Serial.println("\t");
+  Serial.println(xmax);
+  Serial.println("\t");
+  Serial.println(xmin);
   
+  // no nothing for a little while
   delay(25);
 }
 
