@@ -41,15 +41,16 @@ void loop() {
 
   // this is a simple example of using if() to make decisions.
   // for more options, read about "if/else" and "switch".
-  if(xmax > x) xmax = x;
-  if(xmin < x) xmin = x;
+  if(xmax < x) xmax = x;
+  if(xmin > x) xmin = x;
 
   // if we are connected to the computer, spit out important information to explain what is going on.  
-  Serial.println(x);
-  Serial.println("\t");
-  Serial.println(xmax);
-  Serial.println("\t");
-  Serial.println(xmin);
+  Serial.print(x);
+  Serial.print("\t");
+  Serial.print(xmax);
+  Serial.print("\t");
+  Serial.print(xmin);
+  Serial.print("\n");  // same as Serial.println("");
   
   // no nothing for a little while
   delay(25);
